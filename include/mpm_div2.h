@@ -171,6 +171,8 @@ static __inline void _mpm_div2(vector unsigned int *q, const vector unsigned int
      * Left justify the most significant 32 bits of b.
      * Left justify the most significant 64 bits of a.
      */
+    for (i=askip; i<asize-1; i++) q[i] = spu_splats((unsigned int)0);
+
     if (__builtin_expect((delta > -1), 1)) {
       /* Expected non-zero quotient
        */
@@ -329,7 +331,7 @@ static __inline void _mpm_div2(vector unsigned int *q, const vector unsigned int
       addend  = spu_shuffle(c0, prev_c0, dbl_qw_shl_4);
       MPM_ADD_FULL(sum, carry, p0, addend, carry);
     
-      carry = spu_rlmaskqwbyte(carry, -12);
+      carry = spu_rlmaskqwbyte(spu_add(carry, c0), -12);
     
       /* Subtract result from a and place in r (remainder array). 
        */
@@ -358,7 +360,7 @@ static __inline void _mpm_div2(vector unsigned int *q, const vector unsigned int
       a0 = spu_and(a[idx], a_mask);
       r0 = spu_subx(a0, sum, borrow);
       
-      /* While the esitmate of the quotient is over-estimated (ie, the remainder
+      /* While the estimate of the quotient is over-estimated (ie, the remainder
        * is negative, repeatedly add b back to the remainder and decrement the
        * quotient until the remainder is positive. This will need to be done anywhere
        * from 0 to 2 times - typically 0.
@@ -380,7 +382,7 @@ static __inline void _mpm_div2(vector unsigned int *q, const vector unsigned int
     } else {
       /* Zero quotient, copy a into the remainder (r).
        */
-      for (i=askip; i<asize; i++) q[i] = spu_splats((unsigned int)0);
+      q[asize-1] = spu_splats((unsigned int)0);
     }
   } else {
     /* --------------------------------
@@ -423,7 +425,8 @@ static __inline void _mpm_div2(vector unsigned int *q, const vector unsigned int
     
     aa_gt_bb = -1;
     qbytes = 4 * qwords;
-    first_byte_a0 = (vector unsigned int)(spu_splats((unsigned char)((-qbytes)  & 0xF)));
+    first_byte_a0 = spu_add((vector unsigned int)spu_splats((unsigned char)((-qbytes)  & 0xF)), 
+			    ((vector unsigned int){0x00010203, 0x04050607, 0x08090A0B, 0x0C0D0E0F}));
     
     a0 = aa_ptr[0];
     for (j=0; j<b_size; j++) {
@@ -532,7 +535,7 @@ static __inline void _mpm_div2(vector unsigned int *q, const vector unsigned int
       addend = spu_slqwbyte(carry, 4);
       MPM_ADD_PARTIAL_NO_CIN(estimate, carry, estimate, addend);
       
-      /* The esitmate computed using fixed point multiplication can be 
+      /* The estimate computed using fixed point multiplication can be 
        * up to 1 value too small. If (1 + estimate) * b0 <= a0, then increment
        * the estimate since it was under-valued. We could always increment
        * the estimate, but this causes extra iterations of the correction loop

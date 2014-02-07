@@ -211,7 +211,9 @@ static __inline void _mpm_mod_exp2_2(vector unsigned int *c, const vector unsign
 
       if (T_idx >= 348)
       {
-          printf("Error %d\n", T_idx);
+          // This should not happen.
+          // But can be reached when using wrong parameters
+          // which are NOT checked.
       }
       else if (T_idx >= 256)
       {
